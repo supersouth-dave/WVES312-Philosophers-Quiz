@@ -1,0 +1,235 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WVES312 Philosophers Quiz</title>
+  <link href="styles.css" rel="stylesheet">
+  <style>
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    .bounce { animation: bounce 0.3s ease; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-blue-900 to-gray-800 font-sans text-gray-800">
+  <!-- Header -->
+  <header id="header" class="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-12 shadow-lg">
+    <div class="container mx-auto text-center">
+      <h1 class="text-5xl font-bold mb-4">WVES312 Philosophers Quiz</h1>
+      <p class="text-xl mb-8">Challenge your knowledge of philosophies and their key thinkers!</p>
+      <button id="startQuiz" class="bg-green-500 text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-600 shadow-md transition duration-300">Start Quiz</button>
+    </div>
+  </header>
+
+  <!-- Quiz Section -->
+  <section id="quiz" class="py-16 hidden">
+    <div class="container mx-auto px-4">
+      <div class="flex justify-between mb-8">
+        <h2 class="text-3xl font-bold text-white">Quiz Progress: <span id="progress">1/7</span></h2>
+      </div>
+      <div id="questions" class="space-y-10"></div>
+      <button id="submitQuiz" class="bg-blue-900 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-800 shadow-md transition duration-300 mt-8">Submit Quiz</button>
+    </div>
+  </section>
+
+  <!-- Results Section -->
+  <section id="results" class="py-16 hidden">
+    <div class="container mx-auto px-4 text-center">
+      <h2 class="text-4xl font-bold text-white mb-6">Your Results</h2>
+      <p id="score" class="text-2xl text-gray-200 mb-8"></p>
+      <button id="retryQuiz" class="bg-green-500 text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-600 shadow-md transition duration-300 mr-4">Retry Quiz</button>
+      <button id="shareResults" class="bg-blue-900 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-800 shadow-md transition duration-300">Share on X</button>
+      <div id="leaderboard" class="mt-10">
+        <h3 class="text-3xl font-bold text-white mb-6">Leaderboard</h3>
+        <ul id="leaderboardList" class="text-lg text-gray-200 bg-gray-200 p-6 rounded-lg shadow-md"></ul>
+      </div>
+      <div id="learnMore" class="mt-10 text-left max-w-3xl mx-auto">
+        <h3 class="text-3xl font-bold text-white mb-6">Learn More About Philosophies</h3>
+        <div id="philosophyInfo" class="bg-gray-200 p-6 rounded-lg shadow-md"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-blue-900 text-white py-6">
+    <div class="container mx-auto text-center">
+      <p class="text-lg">Contact: 0731064544</p>
+      <p class="text-lg">© 2025 WVES312 Philosophers Quiz</p>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    const quizData = [
+      {
+        question: "Who is most closely associated with Existentialism?",
+        options: ["Jean-Paul Sartre", "Immanuel Kant", "John Stuart Mill", "Aristotle"],
+        answer: "Jean-Paul Sartre",
+        info: "Existentialism emphasizes individual freedom, choice, and subjective meaning in a seemingly absurd world."
+      },
+      {
+        question: "Who is a key figure in Utilitarianism (Consequentialism)?",
+        options: ["Jeremy Bentham", "Søren Kierkegaard", "Immanuel Kant", "Friedrich Nietzsche"],
+        answer: "Jeremy Bentham",
+        info: "Utilitarianism holds that the right action is the one that maximizes overall happiness or pleasure."
+      },
+      {
+        question: "Who developed the foundations of Deontology?",
+        options: ["Immanuel Kant", "John Stuart Mill", "Aristotle", "Jean-Paul Sartre"],
+        answer: "Immanuel Kant",
+        info: "Deontology focuses on the morality of actions based on rules and duties, not outcomes."
+      },
+      {
+        question: "Who is a primary philosopher of Virtue Ethics?",
+        options: ["Aristotle", "Jeremy Bentham", "Friedrich Nietzsche", "Immanuel Kant"],
+        answer: "Aristotle",
+        info: "Virtue Ethics emphasizes the development of moral character and virtues, like courage and wisdom."
+      },
+      {
+        question: "Who is associated with Moral Relativism vs. Moral Absolutism debates?",
+        options: ["Friedrich Nietzsche", "Aristotle", "John Stuart Mill", "Immanuel Kant"],
+        answer: "Friedrich Nietzsche",
+        info: "Moral Relativism argues morality varies by culture; Moral Absolutism claims universal moral truths."
+      },
+      {
+        question: "Who is linked to Egoism vs. Altruism discussions?",
+        options: ["Ayn Rand", "Søren Kierkegaard", "Jeremy Bentham", "Aristotle"],
+        answer: "Ayn Rand",
+        info: "Egoism prioritizes self-interest; Altruism emphasizes concern for others' well-being."
+      },
+      {
+        question: "Who contributed to African Moral Theory, such as Ubuntu?",
+        options: ["Desmond Tutu", "Immanuel Kant", "Jean-Paul Sartre", "Ayn Rand"],
+        answer: "Desmond Tutu",
+        info: "African Moral Theory, like Ubuntu, emphasizes community, interconnectedness, and shared humanity."
+      }
+    ];
+
+    let currentScore = 0;
+    let leaderboard = [];
+
+    function startQuiz() {
+      document.getElementById('header').classList.add('hidden');
+      document.getElementById('quiz').classList.remove('hidden');
+      renderQuestions();
+    }
+
+    function renderQuestions() {
+      const questionsDiv = document.getElementById('questions');
+      quizData.forEach((q, index) => {
+        const questionDiv = document.createElement('div');
+        questionDiv.classList.add('bg-gray-200', 'p-8', 'rounded-lg', 'shadow-lg', 'fade-in', 'border-l-4', 'border-green-500');
+        questionDiv.innerHTML = `
+          <h3 class="text-xl font-semibold mb-4 text-gray-800">${index + 1}. ${q.question}</h3>
+          ${q.options.map(option => `
+            <label class="block mb-3 text-gray-800">
+              <input type="radio" name="q${index}" value="${option}" class="mr-2 accent-green-500">
+              ${option}
+            </label>
+          `).join('')}
+          <p id="feedback${index}" class="mt-3 hidden text-lg"></p>
+        `;
+        questionsDiv.appendChild(questionDiv);
+      });
+    }
+
+    function submitQuiz() {
+      currentScore = 0;
+      quizData.forEach((q, index) => {
+        const selected = document.querySelector(`input[name="q${index}"]:checked`);
+        const feedback = document.getElementById(`feedback${index}`);
+        feedback.classList.remove('hidden');
+        if (selected && selected.value === q.answer) {
+          currentScore++;
+          feedback.textContent = `Correct! ${q.answer} is right!`;
+          feedback.classList.add('text-green-500', 'bounce', 'shadow-sm');
+        } else {
+          feedback.textContent = `Wrong! The answer is ${q.answer}.`;
+          feedback.classList.add('text-red-500', 'shadow-sm');
+        }
+      });
+      document.getElementById('quiz').classList.add('hidden');
+      document.getElementById('results').classList.remove('hidden');
+      document.getElementById('score').textContent = `You got ${currentScore}/7 correct!`;
+      updateLeaderboard();
+      renderPhilosophyInfo();
+    }
+
+    function updateLeaderboard() {
+      leaderboard.push({ score: currentScore, date: new Date().toLocaleString() });
+      leaderboard.sort((a, b) => b.score - a.score);
+      leaderboard = leaderboard.slice(0, 5);
+      const leaderboardList = document.getElementById('leaderboardList');
+      leaderboardList.innerHTML = leaderboard.map(entry => `<li class="py-2">${entry.score}/7 - ${entry.date}</li>`).join('');
+    }
+
+    function renderPhilosophyInfo() {
+      const infoDiv = document.getElementById('philosophyInfo');
+      infoDiv.innerHTML = quizData.map(q => {
+        const philosopherName = q.answer;
+        return `
+          <div class="mb-6 p-4 bg-gray-100 rounded-lg shadow-sm">
+            <h4 class="text-lg font-semibold text-gray-800">${philosopherName}</h4>
+            <p class="text-gray-700">${q.info}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function resetQuiz() {
+      document.getElementById('results').classList.add('hidden');
+      document.getElementById('header').classList.remove('hidden');
+      document.getElementById('questions').innerHTML = '';
+      currentScore = 0;
+    }
+
+    document.getElementById('startQuiz').addEventListener('click', startQuiz);
+    document.getElementById('submitQuiz').addEventListener('click', submitQuiz);
+    document.getElementById('retryQuiz').addEventListener('click', resetQuiz);
+    document.getElementById('shareResults').addEventListener('click', () => {
+      const text = `I scored ${currentScore}/7 on the WVES312 Philosophers Quiz! Test your philosophy knowledge: [Your GitHub Pages URL]`;
+      window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+    });
+  </script>
+</body>
+</html>
